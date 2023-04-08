@@ -6,7 +6,6 @@ output: html_notebook
 
 <left>
 <B><font size=4, color="green">Regularization Techniques</font>
-<BR>Instructor : Dr. Vladimir Shapiro
 </I></B></left>
 
 <B><font size=6, color="#891111">Introduction</font></B>
