@@ -1,0 +1,400 @@
+---
+title: 'Regularization Techniques'
+author: "Sushma Vijayeendra Karjol"
+output: html_notebook
+---
+
+<left>
+<B><font size=4, color="green">Regularization Techniques</font>
+<BR>Instructor : Dr. Vladimir Shapiro
+</I></B></left>
+
+<B><font size=6, color="#891111">Introduction</font></B>
+ 
+   In this module, we will be using the glmnet package to perform the Ridge Regression and the Lasso Regression. To fit the ridge regression models and lasso models the main function of this package, cv. glmnet() or cross-validation glmnet is used. And, this function has quite a different syntax from other model-fitting functions. A college dataset from the ISLR is used for the study. This study aims to know which model fits well to know the predictions of variable - 'Graduation rate' for private and non-private colleges using the rest of the variables as dependents. This is divided into three parts. In the first part, the data set is regularised using the Ridge method, where lambda. min and lambda.1se values are estimated. Then the methods are visually represented and compared. The best fit of the Ridge regression model is set with the train and test dataset. The second part includes the same set of procedures are followed but with LASSO regression. Coefficients of variables are compared for the study to know which one would be the best fit. The third part involves the analysis and discussions.
+
+
+College Dataset from the library ISLR is a assigned to M4_College
+   
+```{r}
+
+library(ISLR)
+attach(College)
+
+M4_College <- College[-1]
+
+# first column has the categorical dataset which is deleted for the study.
+
+```
+
+  
+
+### 1) Split the data into a train and test set – refer to the ALY6015_Feature_Selection_R.pdf  document for information on how to split a dataset.
+
+   The dataset is split into training and testing sets. It is the important part of evaluation data mining models. Typically , a large portion of dataset is allocated for training and smaller for testing.
+
+```{r}
+library (caret)
+library(lattice)
+library(ggplot2)
+
+# spliiting the dataset for th study
+set.seed(1520)
+trainIndex <- createDataPartition(M4_College$Apps,p=0.7,list=FALSE,times=1)
+M4College_train <- M4_College[ trainIndex,]
+M4College_test <- M4_College[-trainIndex,]
+```
+ 
+    The dataset is split into - training and test sets. They differ in size because of the  way the samples are being taken.
+      Train dataset is used to fit the model and the test is conducted to  test if the prediction fits the dataset.
+
+```{r}
+# provides details of the variables
+
+summary(M4College_train)
+
+# dimension of the dataset
+dim(M4College_train)
+
+```
+   Summary determines the descriptive statistics of the all the variables in the dataset.
+
+   
+### 2) Use the glmnet function to estimate the lambda.min and lambda.1se values. Compare and discuss the values.
+
+    The glmnet() function conatins alpha argument that provides the model that is fit. If alpha is  0 then a ridge regression model is fit, and if alpha is  1 then a lasso model is fit. First fit Ridge Regression model:
+    
+```{r}
+library(glmnet)
+
+
+
+```
+   
+   
+
+```{r}
+library(dplyr)
+library(foreach)
+#install.packages("Matrix")
+library(Matrix)
+
+train.mat = model.matrix(Grad.Rate~., data=M4College_train)[,-1]
+
+lambda_seq <- 10 ^ seq(2,-2,by = -.1)
+
+mod.ridge = cv.glmnet(x = train.mat, y = M4College_train$Grad.Rate, alpha = 0,lambda=lambda_seq )
+mod.ridge
+
+cat("\n lambda.best \n")
+lambda.best = mod.ridge$lambda.min
+lambda.best
+
+cat("\n lambda.lse \n")
+
+lambda.1se = mod.ridge$lambda.1se
+lambda.1se
+
+
+```
+
+To predict the 'Grad rate variable' train data set is regularized using Ridge method by bringing the co-efficient of all the variables which have a lesser impact on the Graduation rate, are brought to zero. Based on which lambda. min and lambda. lse is calculated. lambda. min is considered as best as it has the least value with 1.995. And, lambda.1se with 25.119 is the largest value of the lambda which has an error of 17.27, usually one standard error away from the minimum. The penalty term lambda regularizes the coefficients to reduce the complexity in the model by shrinking the multi-collinearity.
+
+  
+```{r}
+test.mat <- model.matrix(Grad.Rate~., data = M4College_test)[,-1]
+y = M4College_test$Grad.Rate
+
+alpha_predict <- predict(mod.ridge, s = mod.ridge$lambda.min , newx = test.mat)
+
+```
+ 
+ since we would compare Ridge model with Lasso in the later part , for consistency we will be using lamba.1se in both the cases.
+
+```{r}
+#glmnet(x, y, alpha = 0.2, weights = wts, nlambda = 20)
+
+fit <- glmnet(train.mat, M4College_train$Grad.Rate , alpha = 0)
+```
+
+
+
+
+### 3)Plot the results from the glmnet function, provide an interpretation. What does this plot tell us?
+
+
+```{r}
+plot(mod.ridge)
+```
+  In Ridge regression we estimate the coefficients of multiple-regression models where the independent variables are highly correlated. The least square values are unbiased , the variances are large and are far away from the true values. Here , Ridge minimizes the residual sum of squares . 
+  
+
+### 4) Fit a Ridge regression model against the training set and report on the coefficients. Is there anything interesting?
+
+```{r}
+# Rebuilding the model with best lamda value identified
+Ridge_best <- glmnet(x = train.mat, y = M4College_train$Grad.Rate, lambda = lambda.best)
+Ridge_best
+
+
+```
+
+
+```{r}
+# table of co-efficent values for each variable
+coef(Ridge_best)
+?glmnet()
+
+
+```
+    The co-efficient of Apps,Accept,Enroll,Top10per,F.Undergrad,Terminal, Room.Board,Books, Personal,S.F.Ratio approach to zero at a stage stating their lower impact on Grad rate . Further more, the variables Top10perc, Top25perc ,Outstate, perc.alumni have greater impact on increasing  'Grad rate' in all the Colleges as the coefficients of these variables don't tur to zero.
+
+```{r}
+# graph of each co-efficient values
+plot(mod.ridge$glmnet.fit)
+
+
+```
+    The above plot designates the whole path of variables as they narrow towards zero. As lambda values raise the coefficients approach to zero. Vice-versa when the coefficients are unregularised when the lambda is approaching zero. The ridge regression here has penalized the coefficients such that the least efficient variables are in the estimation to shrink. This indicates that several variables have no impact on the 'graduation rate'. There are two co-efficient that have negative values. The faster the variables are shrinking they have a lesser role to play and can increase the chances of 'Grad rate'.
+  
+  
+```{r}
+# plotting using the fit 
+plot(fit)
+```
+
+
+```{r}
+# creating matrix for test dataset.
+test.mat = model.matrix(Grad.Rate~., data=M4College_test)
+
+
+```
+
+
+
+
+### 5) Determine the performance of the fit model against the training set by calculating the root mean square error (RMSE). sqrt(mean((actual - predicted)^2))
+
+```{r}
+
+# RMSE calculaton for train data set
+
+Ridge_best # model created using best lmada value
+
+alpha_predictTrain <- predict(Ridge_best, s = lambda.best , newx = train.mat)
+
+predict <- alpha_predictTrain
+
+cat ("\n Root mean square value of Ridge regression against train dataset \n")
+sqrt(mean((M4College_train$Grad.Rate - predict)^2))
+
+```
+    The root mean square value of Ridge Regression  method is 13.6257. 
+    
+### 6) Determine the performance of the fit model against the test set by calculating the root mean square error (RMSE). Is your model overfit?
+
+```{r}
+# matrix for train dataset
+test.mat = model.matrix(Grad.Rate~., data = M4College_test)[,-1]
+
+
+y = M4College_test$Grad.Rate
+
+fit <- glmnet(x = test.mat, y = M4College_test$Grad.Rate)
+
+alpha_predictTest <- predict(Ridge_best, s = lambda.best , newx = test.mat)
+
+actualTest <- mod.ridge
+predictTest <- alpha_predictTest
+
+cat ("\n Root mean square value of Ridge regression against test dataset \n")
+
+sqrt(mean((M4College_test$Grad.Rate - predictTest)^2))
+```
+   In comparison with the RMSE of test dataset is 13.52 while train dataset is 13.62. Its difficult to conclude that the model is overfit or underfit as the RMSE  values are almost equal
+
+
+### 7) Use the cv.glmnet function to estimate the min and lambda.1se values. Compare and discuss the values.
+```{r}
+lambda_seqLasso <- 10^seq(2, -2, by = -.1)
+
+mod.lasso = cv.glmnet(train.mat, M4College_train$Grad.Rate, alpha=1 ,lambda = lambda_seqLasso)
+mod.lasso
+lambda.bestLasso = mod.lasso$lambda.min
+lambda.bestLasso
+
+lambda.1se = mod.lasso$lambda.1se
+lambda.1se
+
+
+
+```
+     The minimum Labda is 0.2512 with Standard error of 8.959 which includes 12 variables. Lambda 1se is 1.2589 with Standard error of 7.668 and with only  8 variables.
+     
+
+### 8) Plot the results from the glmnet function, provide an interpretation. What does this plot tell us?
+
+```{r}
+plot(mod.lasso)
+
+```
+          The above graph is the cross validation curve with red dotted line. The plot also has the lower and upper standard deviation curves along with error bars( lambda sequence). There are two vertical dotted lines which indicate lamda.min and lambda.1se. Lamda.min provides minimum mean of cross validation error. And, lambda.1se provides  corss -validaton error one standard deviation away from the labda.min.
+
+### 9) Fit a LASSO regression model against the training set and report on the coefficients. Do any coefficients reduce to zero? If so, which ones?
+
+```{r}
+lasso_best <- glmnet(x = train.mat, y = M4College_train$Grad.Rate, lambda = lambda.bestLasso)
+lasso_best
+#predict(mod.lasso, s = mod.lasso$lambda.1se , newx =)
+#predict(mod.lasso, s=lambda.best, type="coefficients")
+
+plot(mod.lasso$glmnet.fit , label = TRUE)
+```
+    The above graph measure the multi-linear complexity of the model. This is graphically explained against train data set.There are several co-efficient values that are blowing-up at the end of the path. Along side coefficient of few variables are suppressed to zero.
+```{r}
+coef(lasso_best)
+```
+
+
+### 10) Determine the performance of the fit model against the training set by calculating the root mean square error (RMSE). sqrt(mean((actual - predicted)^2))
+
+```{r}
+# calcualting RMSE
+
+lasso_best <- glmnet(x = train.mat, y = M4College_train$Grad.Rate, lambda = lambda.bestLasso)
+
+train.mat <- model.matrix(Grad.Rate~., data = M4College_test)[,-1]
+y = M4College_test$Grad.Rate
+
+alpha_predictL <- predict(lasso_best, s = mod.lasso$lambda.min , newx = train.mat)
+
+actualTrain <- mod.lasso
+predictTrain <- alpha_predictTest
+
+cat("\n Root mean square error of train dataset \n")
+sqrt(mean((M4College_test$Grad.Rate - predictTrain)^2))
+
+
+
+
+
+```
+
+### 11) Determine the performance of the fit model against the test set by calculating the root mean square error (RMSE). Is your model overfit?
+```{r}
+test.mat <- model.matrix(Grad.Rate~., data = M4College_test)[,-1]
+y = M4College_test$Grad.Rate
+lasso_best <- glmnet(x = train.mat, y = M4College_train$Grad.Rate, lambda = lambda.bestLasso)
+alpha_predictL <- predict(lasso_best, s = mod.lasso$lambda.min , newx = test.mat)
+
+actualTest <- mod.lasso
+
+predictTest <- alpha_predictTest
+
+ 
+cat("\n Root mean square error of test dataset \n")
+sqrt(mean((M4College_test$Grad.Rate - predictTest)^2))
+
+```
+   The RMSE for train dataset and test data set is equivalent with 13.52. Through this it can be said that the model is good fit. However its diffcilut to conclude that it is good fit for any of the independent data sets.
+
+
+### 12) Which model performed better and why? Is that what you expected?
+
+   
+   The aim of using these two models is to shrink and regularize the co-efficient. This improves the prediction accuracy and decreases the variance. Altogether interpretability can also be improved. 
+   
+    In ridge regression, a penalty is tuning the parameter called lambda was chosen from the cross-validation. It is making the model fit small by decreasing the residual sum of squares also by including a shrinkage penalty. Thus the coefficients that have large values are penalized. And as the lambda is growing, the bias is not changed, however, variance is getting dropped. Ridge is not filtering any variables but selecting all the variables in the final model. The RMSE value for the trained dataset is 13.6257 and the test data set is 13.52526.
+    
+    On the other hand, the lasso is shrinking the coefficient either approximately to zero or setting the variables directly to zero when the lambda value is big. But lasso does the variable selection. A combination of shrinkage along with a selection of variables makes it a better model than ridge when both the models have. The RMSE value for the trained dataset is 13.52526 and the test data set is 13.52526.
+
+   In comparison, since lasso filters and selects few variables, better results were expected. On the other hand, Ridge considers all the variables in reducing the coefficients. However, we observed stable RMSE values for both models. 
+
+
+### 13) Refer to the ALY6015_Feature_Selection_R.pdf  document for how to perform stepwise selection and then fit a model. Did this model perform better or as well as Ridge regression or LASSO? Which method do you prefer and why?
+
+```{r}
+library(leaps)
+library(ISLR)
+library(dplyr)
+
+```
+   Regression subset function or Regsubset() from the leaps package identifies different  
+models with different sizes. We need to only specify the 'nmax' values which inputs the maximum number of variables to be included in the model. Among these best variables are quantified using RSS. 
+
+```{r}
+best_subset = regsubsets(Grad.Rate~ ., data = M4_College, nvmax = 19)
+summary(best_subset)
+
+
+```
+
+   The summary function sets the  variables that provides the best models. In the above results the good variables are represented by the asterisk. From the above we can conclude that  a good model can be created using one variable to max of sixteen variables. Among them Outstate, Top25perc ,perc.alumni , Apps are some of the important variables in an ordinal form. 
+```{r}
+#fit_subset <- lm(Grad.Rate ~ Outstate + Top25perc + P.Undergrad + perc.alumni + Room.Board + + Apps)
+
+fit_subset <- step(lm(Grad.Rate ~. , data =  M4College_train), direction = 'both', steps = 16 , trace = FALSE)
+
+Subset_lm_Train <- predict.lm(fit_subset, newdata = M4College_train)
+
+
+library(mltools)
+SubRMSE_train<- mltools::rmse(preds  = Subset_lm_Train, 
+              actuals = M4College_train$Grad.Rate, 
+              weights = 1, 
+              na.rm   = FALSE)
+cat("\n Root mean square error of best fit of train dataset")
+
+SubRMSE_train
+
+
+Subset_lm_Test <- predict.lm(fit_subset, newdata = M4College_test)
+
+cat("\n Root mean square error of best fit of test dataset")
+SubRMSE_test <- mltools::rmse(preds = Subset_lm_Test, 
+              actuals = M4College_test$Grad.Rate,
+              weights = 1, 
+              na.rm   = FALSE)
+
+SubRMSE_test
+
+```
+   
+     In a comparison of all the three methods used, Lasso and subset used a lesser number of variables to form a good model. The outState variable is not given a good amount of importance in Ridge and lasso but the Subset regression mentions that a good model can be created using only Outstate Variable with 'Grad Rate'. However, practically it may not be correct to predict and improve business based only on one variable. On the other hand, Lasso gives more importance to 'Pct. new students from top 25% of H.S. class' and 'Pct. alumni who donate'. These are the area of concentration that all the institutions need improvement to increase the Graduation rate. 
+   
+   
+<B><font size=6, color="#891111">Conclusion</font></B>
+
+     A variety of models fit using various methods such as: Ridge, Lasso and  best subsets  We found that the performance from best to worst was:
+
+1. Linear model : 
+    Train - 12.71618
+    Test - 12.76898
+    
+2. Lasso model :
+    Train - 13.37291
+    Test - 13.37291
+    
+3. Ridge model :
+    Train - 13.43388
+    Test - 13.37291
+    
+    From the above results, we can conclude that Linear has the least mean square and results in the best model inclusive of all the 16 variables that impact the Graduation rate of the education institution. Thus to improve the Graduation rate, the institution can concentrate on all the areas. 
+    
+    
+#### Reference
+
+1) Best Subsets Regression Essentials in R
+Kassambara & Sfd
+http://www.sthda.com/english/articles/37-model-selection-essentials-in-r/155-best-subsets-regression-essentials-in-r/
+
+2) Deepika Singh
+Singh
+https://www.pluralsight.com/guides/linear-lasso-and-ridge-regression-with-r
+
+3) Ridge and Lasso Regression Models
+http://wavedatalab.github.io/machinelearningwithr/post4.html
+
+
+
